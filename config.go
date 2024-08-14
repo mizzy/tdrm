@@ -12,8 +12,8 @@ type Config struct {
 }
 
 type TaskdefConfig struct {
-	FamilyPrefix string `yaml:"family_prefix,omitempty"`
-	KeepCount    int64  `yaml:"keep_count,omitempty"`
+	FamilyPrefix *string `yaml:"family_prefix,omitempty"`
+	KeepCount    int64   `yaml:"keep_count,omitempty"`
 }
 
 func LoadConfig(path string) (*Config, error) {
