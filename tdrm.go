@@ -29,5 +29,11 @@ func New(ctx context.Context, region string) (*App, error) {
 }
 
 func (app *App) Run(ctx context.Context, path string, opt Option) error {
+	c, err := LoadConfig(path)
+	if err != nil {
+		return err
+	}
+
+	_ = c
 	return nil
 }
