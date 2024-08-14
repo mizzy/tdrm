@@ -2,6 +2,7 @@ package tdrm
 
 import (
 	"context"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 )
@@ -34,6 +35,29 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 		return err
 	}
 
-	_ = c
+	for _, taskDef := range c.TaskDefinitions {
+		familyPrefix := taskDef.FamilyPrefix
+
+		if *familyPrefix == "*" {
+			familyPrefix = nil
+		}
+
+		p := ecs.NewListTaskDefinitionsPaginator(app.ecs, &ecs.ListTaskDefinitionsInput{
+			FamilyPrefix: familyPrefix,
+		})
+
+		for p.HasMorePages() {
+			res, err := p.NextPage(ctx)
+			if err != nil {
+				return err
+			}
+
+			for _, tdArn := range res.TaskDefinitionArns {
+				fmt.Println(tdArn)
+			}
+		}
+
+	}
+
 	return nil
 }
