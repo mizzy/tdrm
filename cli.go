@@ -10,6 +10,15 @@ func (app *App) NewCLI() *cli.App {
 	cliApp := &cli.App{
 		Name:  "tdrm",
 		Usage: "A command line tool to manage AWS ECS task definitions",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Value:   "tdrm.yaml",
+				Usage:   "Load configuration from `FILE`",
+				EnvVars: []string{"TDRM_CONFIG"},
+			},
+		},
 		Commands: []*cli.Command{
 			app.NewPlanCommand(),
 			app.NewDeleteCommand(),
