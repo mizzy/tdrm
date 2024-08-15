@@ -2,9 +2,9 @@ package tdrm
 
 import (
 	"context"
-	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
 )
 
 type App struct {
@@ -44,7 +44,10 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 
 		p := ecs.NewListTaskDefinitionsPaginator(app.ecs, &ecs.ListTaskDefinitionsInput{
 			FamilyPrefix: familyPrefix,
+			Status:       types.TaskDefinitionStatusActive,
 		})
+
+		var activeTaskDefinitions []*types.TaskDefinition
 
 		for p.HasMorePages() {
 			res, err := p.NextPage(ctx)
@@ -53,10 +56,15 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 			}
 
 			for _, tdArn := range res.TaskDefinitionArns {
-				fmt.Println(tdArn)
+				td, err := app.ecs.DescribeTaskDefinition(ctx, &ecs.DescribeTaskDefinitionInput{
+					TaskDefinition: &tdArn,
+				})
+				if err != nil {
+					return err
+				}
+				activeTaskDefinitions = append(activeTaskDefinitions, td.TaskDefinition)
 			}
 		}
-
 	}
 
 	return nil
