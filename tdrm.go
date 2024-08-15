@@ -2,9 +2,12 @@ package tdrm
 
 import (
 	"context"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"regexp"
+	"strings"
 )
 
 type App struct {
@@ -15,6 +18,7 @@ type App struct {
 type Option struct {
 	Delete bool
 	Force  bool
+	Format outputFormat
 }
 
 func New(ctx context.Context, region string) (*App, error) {
@@ -35,35 +39,59 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 		return err
 	}
 
-	for _, taskDef := range c.TaskDefinitions {
-		familyPrefix := taskDef.FamilyPrefix
+	var families []string
 
-		if *familyPrefix == "*" {
-			familyPrefix = nil
+	p := ecs.NewListTaskDefinitionFamiliesPaginator(app.ecs, &ecs.ListTaskDefinitionFamiliesInput{})
+	for p.HasMorePages() {
+		res, err := p.NextPage(ctx)
+		if err != nil {
+			return err
 		}
 
-		p := ecs.NewListTaskDefinitionsPaginator(app.ecs, &ecs.ListTaskDefinitionsInput{
-			FamilyPrefix: familyPrefix,
-			Status:       types.TaskDefinitionStatusActive,
-		})
+		for _, family := range res.Families {
+			families = append(families, family)
+		}
+	}
 
-		var activeTaskDefinitions []*types.TaskDefinition
+	for _, taskDef := range c.TaskDefinitions {
+		familyPrefix := fmt.Sprintf("^%s$", strings.Replace(taskDef.FamilyPrefix, "*", ".*", -1))
+		re := regexp.MustCompile(familyPrefix)
 
-		for p.HasMorePages() {
-			res, err := p.NextPage(ctx)
-			if err != nil {
-				return err
-			}
-
-			for _, tdArn := range res.TaskDefinitionArns {
-				td, err := app.ecs.DescribeTaskDefinition(ctx, &ecs.DescribeTaskDefinitionInput{
-					TaskDefinition: &tdArn,
-				})
+		for _, family := range families {
+			if re.Match([]byte(family)) {
+				err = app.scanTaskDefinitions(ctx, family, opt)
 				if err != nil {
 					return err
 				}
-				activeTaskDefinitions = append(activeTaskDefinitions, td.TaskDefinition)
 			}
+		}
+	}
+
+	return nil
+}
+
+func (app *App) scanTaskDefinitions(ctx context.Context, family string, opt Option) error {
+	p := ecs.NewListTaskDefinitionsPaginator(app.ecs, &ecs.ListTaskDefinitionsInput{
+		FamilyPrefix: &family,
+		Status:       types.TaskDefinitionStatusActive,
+	})
+
+	var activeTaskDefinitions []*types.TaskDefinition
+
+	for p.HasMorePages() {
+		res, err := p.NextPage(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, tdArn := range res.TaskDefinitionArns {
+			td, err := app.ecs.DescribeTaskDefinition(ctx, &ecs.DescribeTaskDefinitionInput{
+				TaskDefinition: &tdArn,
+			})
+			if err != nil {
+				return err
+			}
+			activeTaskDefinitions = append(activeTaskDefinitions, td.TaskDefinition)
 		}
 	}
 
