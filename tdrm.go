@@ -2,13 +2,17 @@ package tdrm
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ecs"
-	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/Songmu/prompter"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ecs"
+	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
 )
 
 type App struct {
@@ -82,6 +86,52 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 	err = summaries.print(os.Stdout, opt.Format)
 	if err != nil {
 		return err
+	}
+
+	if !opt.Delete {
+		return nil
+	}
+
+	fmt.Println("")
+
+	for _, taskDef := range taskDefinitions {
+		if !opt.Force && len(taskDef.ToInactive) > 0 {
+			if !prompter.YN(fmt.Sprintf("Do you inactivate %d revisions on %s?", len(taskDef.ToInactive), taskDef.Family), false) {
+				return errors.New("aborted")
+			}
+		}
+
+		for _, toInactive := range taskDef.ToInactive {
+			_, err = app.ecs.DeregisterTaskDefinition(ctx, &ecs.DeregisterTaskDefinitionInput{
+				TaskDefinition: aws.String(toInactive),
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		if !opt.Force && len(taskDef.ToDelete) > 0 {
+			if !prompter.YN(fmt.Sprintf("Do you delete %d revisions on %s?", len(taskDef.ToDelete), taskDef.Family), false) {
+				return errors.New("aborted")
+			}
+		}
+
+		chunkSize := 10
+		for i := 0; i < len(taskDef.ToDelete); i += chunkSize {
+			end := i + chunkSize
+			if end > len(taskDef.ToDelete) {
+				end = len(taskDef.ToDelete)
+			}
+
+			chunk := taskDef.ToDelete[i:end]
+
+			_, err = app.ecs.DeleteTaskDefinitions(ctx, &ecs.DeleteTaskDefinitionsInput{
+				TaskDefinitions: chunk,
+			})
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
