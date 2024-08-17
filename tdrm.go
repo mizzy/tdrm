@@ -61,7 +61,7 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 
 		for _, family := range families {
 			if re.Match([]byte(family)) {
-				summary, err := app.scanTaskDefinition(ctx, family, opt)
+				summary, err := app.scanTaskDefinition(ctx, family, taskDef.KeepCount)
 				if err != nil {
 					return err
 				}
@@ -73,16 +73,36 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 	return summaries.print(os.Stdout, opt.Format)
 }
 
-func (app *App) scanTaskDefinition(ctx context.Context, family string, opt Option) (*Summary, error) {
+func (app *App) scanTaskDefinition(ctx context.Context, family string, keepCount int) (*Summary, error) {
 	summary := &Summary{TaskDefinition: family}
 
+	activeRevisions, err := app.getRevisions(ctx, family, types.TaskDefinitionStatusActive)
+	if err != nil {
+		return nil, err
+	}
+
+	inactiveRevisions, err := app.getRevisions(ctx, family, types.TaskDefinitionStatusInactive)
+	if err != nil {
+		return nil, err
+	}
+
+	summary.ActiveRevisions = len(activeRevisions)
+	summary.InactiveRevisions = len(inactiveRevisions)
+	summary.ToInactive = len(activeRevisions) - keepCount
+	summary.ToDelete = len(inactiveRevisions)
+	summary.Keep = keepCount
+
+	return summary, nil
+}
+
+func (app *App) getRevisions(ctx context.Context, family string, status types.TaskDefinitionStatus) ([]string, error) {
 	p := ecs.NewListTaskDefinitionsPaginator(app.ecs, &ecs.ListTaskDefinitionsInput{
 		FamilyPrefix: &family,
-		Status:       types.TaskDefinitionStatusActive,
+		Status:       status,
+		Sort:         types.SortOrderDesc,
 	})
 
-	var activeRevisions []*types.TaskDefinition
-
+	var revisions []string
 	for p.HasMorePages() {
 		res, err := p.NextPage(ctx)
 		if err != nil {
@@ -90,18 +110,9 @@ func (app *App) scanTaskDefinition(ctx context.Context, family string, opt Optio
 		}
 
 		for _, tdArn := range res.TaskDefinitionArns {
-			td, err := app.ecs.DescribeTaskDefinition(ctx, &ecs.DescribeTaskDefinitionInput{
-				TaskDefinition: &tdArn,
-			})
-
-			if err != nil {
-				return nil, err
-			}
-			activeRevisions = append(activeRevisions, td.TaskDefinition)
+			revisions = append(revisions, tdArn)
 		}
 	}
 
-	summary.ActiveRevisions = len(activeRevisions)
-
-	return summary, nil
+	return revisions, nil
 }
