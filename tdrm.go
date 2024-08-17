@@ -22,6 +22,12 @@ type Option struct {
 	Format outputFormat
 }
 
+type TaskDefinition struct {
+	Family     string
+	ToInactive []string
+	ToDelete   []string
+}
+
 func New(ctx context.Context, region string) (*App, error) {
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
@@ -55,44 +61,61 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 	}
 
 	summaries := SummaryTable{}
+	var taskDefinitions []*TaskDefinition
+
 	for _, taskDef := range c.TaskDefinitions {
 		familyPrefix := fmt.Sprintf("^%s$", strings.Replace(taskDef.FamilyPrefix, "*", ".*", -1))
 		re := regexp.MustCompile(familyPrefix)
 
 		for _, family := range families {
 			if re.Match([]byte(family)) {
-				summary, err := app.scanTaskDefinition(ctx, family, taskDef.KeepCount)
+				summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, taskDef.KeepCount)
 				if err != nil {
 					return err
 				}
 				summaries = append(summaries, summary)
+				taskDefinitions = append(taskDefinitions, taskDefinition)
 			}
 		}
 	}
 
-	return summaries.print(os.Stdout, opt.Format)
+	err = summaries.print(os.Stdout, opt.Format)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (app *App) scanTaskDefinition(ctx context.Context, family string, keepCount int) (*Summary, error) {
+func (app *App) scanTaskDefinition(ctx context.Context, family string, keepCount int) (*Summary, *TaskDefinition, error) {
 	summary := &Summary{TaskDefinition: family}
 
 	activeRevisions, err := app.getRevisions(ctx, family, types.TaskDefinitionStatusActive)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	inactiveRevisions, err := app.getRevisions(ctx, family, types.TaskDefinitionStatusInactive)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	taskDef := &TaskDefinition{
+		Family:   family,
+		ToDelete: inactiveRevisions,
+	}
+
+	if len(activeRevisions) > keepCount {
+		taskDef.ToInactive = activeRevisions[keepCount:]
 	}
 
 	summary.ActiveRevisions = len(activeRevisions)
 	summary.InactiveRevisions = len(inactiveRevisions)
-	summary.ToInactive = len(activeRevisions) - keepCount
-	summary.ToDelete = len(inactiveRevisions)
-	summary.Keep = keepCount
+	summary.ToInactive = len(taskDef.ToInactive)
+	summary.ToDelete = len(taskDef.ToDelete)
+	summary.Keep = summary.ActiveRevisions - summary.ToInactive
 
-	return summary, nil
+	return summary, taskDef, nil
 }
 
 func (app *App) getRevisions(ctx context.Context, family string, status types.TaskDefinitionStatus) ([]string, error) {
