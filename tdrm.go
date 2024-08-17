@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -53,47 +54,54 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 		}
 	}
 
+	summaries := SummaryTable{}
 	for _, taskDef := range c.TaskDefinitions {
 		familyPrefix := fmt.Sprintf("^%s$", strings.Replace(taskDef.FamilyPrefix, "*", ".*", -1))
 		re := regexp.MustCompile(familyPrefix)
 
 		for _, family := range families {
 			if re.Match([]byte(family)) {
-				err = app.scanTaskDefinitions(ctx, family, opt)
+				summary, err := app.scanTaskDefinition(ctx, family, opt)
 				if err != nil {
 					return err
 				}
+				summaries = append(summaries, summary)
 			}
 		}
 	}
 
-	return nil
+	return summaries.print(os.Stdout, opt.Format)
 }
 
-func (app *App) scanTaskDefinitions(ctx context.Context, family string, opt Option) error {
+func (app *App) scanTaskDefinition(ctx context.Context, family string, opt Option) (*Summary, error) {
+	summary := &Summary{TaskDefinition: family}
+
 	p := ecs.NewListTaskDefinitionsPaginator(app.ecs, &ecs.ListTaskDefinitionsInput{
 		FamilyPrefix: &family,
 		Status:       types.TaskDefinitionStatusActive,
 	})
 
-	var activeTaskDefinitions []*types.TaskDefinition
+	var activeRevisions []*types.TaskDefinition
 
 	for p.HasMorePages() {
 		res, err := p.NextPage(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		for _, tdArn := range res.TaskDefinitionArns {
 			td, err := app.ecs.DescribeTaskDefinition(ctx, &ecs.DescribeTaskDefinitionInput{
 				TaskDefinition: &tdArn,
 			})
+
 			if err != nil {
-				return err
+				return nil, err
 			}
-			activeTaskDefinitions = append(activeTaskDefinitions, td.TaskDefinition)
+			activeRevisions = append(activeRevisions, td.TaskDefinition)
 		}
 	}
 
-	return nil
+	summary.ActiveRevisions = len(activeRevisions)
+
+	return summary, nil
 }
