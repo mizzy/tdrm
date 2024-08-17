@@ -18,8 +18,12 @@ const (
 type SummaryTable []*Summary
 
 type Summary struct {
-	TaskDefinition  string `json:"task_definition"`
-	ActiveRevisions int    `json:"active_revisions"`
+	TaskDefinition    string `json:"task_definition"`
+	ActiveRevisions   int    `json:"active_revisions"`
+	InactiveRevisions int    `json:"inactive_revisions"`
+	ToInactive        int    `json:"to_inactive"`
+	ToDelete          int    `json:"to_delete"`
+	Keep              int    `json:"keep"`
 }
 
 func newOutputFormatFrom(s string) (outputFormat, error) {
@@ -65,7 +69,11 @@ func (s *SummaryTable) printJSON(w io.Writer) error {
 func (s *SummaryTable) header() []string {
 	return []string{
 		"task definition",
-		"active revisions",
+		"active",
+		"inactive",
+		"to inactive",
+		"to delete",
+		"keep",
 	}
 }
 
@@ -73,5 +81,9 @@ func (s *Summary) row() []string {
 	return []string{
 		s.TaskDefinition,
 		strconv.Itoa(s.ActiveRevisions),
+		strconv.Itoa(s.InactiveRevisions),
+		strconv.Itoa(s.ToInactive),
+		strconv.Itoa(s.ToDelete),
+		strconv.Itoa(s.Keep),
 	}
 }
