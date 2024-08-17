@@ -1,0 +1,23 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    main: ./cmd/tdrm/main.go
+    binary: tdrm
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
