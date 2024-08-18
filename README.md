@@ -8,6 +8,9 @@ This tool works like this:
 - Inactivate revisions other than revisions to keep.
 - Delete inactive revisions.
 
+
+This tool is heavily inspired by [tdtidy](https://github.com/manabusakai/tdtidy) and [ecrm](https://github.com/fujiwara/ecrm).
+
 ## Usage
 
 ```
