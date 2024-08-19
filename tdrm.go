@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"log"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/Songmu/prompter"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
@@ -77,12 +77,21 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 
 		for _, family := range families {
 			if re.Match([]byte(family)) {
-				summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, *taskDefConfig.KeepCount)
-				if err != nil {
-					return err
+				scanned := false
+				for _, taskDef := range taskDefinitions {
+					if taskDef.Family == family {
+						scanned = true
+					}
 				}
-				summaries = append(summaries, summary)
-				taskDefinitions = append(taskDefinitions, taskDefinition)
+
+				if !scanned {
+					summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, *taskDefConfig.KeepCount)
+					if err != nil {
+						return err
+					}
+					summaries = append(summaries, summary)
+					taskDefinitions = append(taskDefinitions, taskDefinition)
+				}
 			}
 		}
 	}
