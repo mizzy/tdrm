@@ -71,13 +71,13 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 	summaries := SummaryTable{}
 	var taskDefinitions []*TaskDefinition
 
-	for _, taskDef := range c.TaskDefinitions {
-		familyPrefix := fmt.Sprintf("^%s$", strings.Replace(taskDef.FamilyPrefix, "*", ".*", -1))
+	for _, taskDefConfig := range c.TaskDefinitions {
+		familyPrefix := fmt.Sprintf("^%s$", strings.Replace(taskDefConfig.FamilyPrefix, "*", ".*", -1))
 		re := regexp.MustCompile(familyPrefix)
 
 		for _, family := range families {
 			if re.Match([]byte(family)) {
-				summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, taskDef.KeepCount)
+				summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, taskDefConfig.KeepCount)
 				if err != nil {
 					return err
 				}
