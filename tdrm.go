@@ -96,8 +96,6 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 		return nil
 	}
 
-	fmt.Println("")
-
 	for _, taskDef := range taskDefinitions {
 		if !opt.Force && len(taskDef.ToInactive) > 0 {
 			if !prompter.YN(fmt.Sprintf("Do you inactivate %d revisions on %s?", len(taskDef.ToInactive), taskDef.Family), false) {
