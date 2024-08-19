@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"log"
 	"os"
 	"regexp"
@@ -34,7 +35,9 @@ type TaskDefinition struct {
 }
 
 func New(ctx context.Context, region string) (*App, error) {
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region), config.WithRetryer(func() aws.Retryer {
+		return retry.AddWithMaxAttempts(retry.NewStandard(), 10)
+	}))
 	if err != nil {
 		return nil, err
 	}
