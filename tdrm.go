@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -102,6 +103,9 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 		}
 
 		for _, toInactive := range taskDef.ToInactive {
+			parts := strings.Split(toInactive, "/")
+			revision := parts[len(parts)-1]
+			log.Printf("[info] inactivating %s\n", revision)
 			_, err = app.ecs.DeregisterTaskDefinition(ctx, &ecs.DeregisterTaskDefinitionInput{
 				TaskDefinition: aws.String(toInactive),
 			})
@@ -125,6 +129,7 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 
 			chunk := taskDef.ToDelete[i:end]
 
+			log.Printf("[info] deleting %d / %d of %s\n", end, len(taskDef.ToDelete), taskDef.Family)
 			_, err = app.ecs.DeleteTaskDefinitions(ctx, &ecs.DeleteTaskDefinitionsInput{
 				TaskDefinitions: chunk,
 			})
@@ -139,6 +144,8 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 
 func (app *App) scanTaskDefinition(ctx context.Context, family string, keepCount int) (*Summary, *TaskDefinition, error) {
 	summary := &Summary{TaskDefinition: family}
+
+	log.Printf("[info] getting revisions of task definition %s\n", family)
 
 	activeRevisions, err := app.getRevisions(ctx, family, types.TaskDefinitionStatusActive)
 	if err != nil {
