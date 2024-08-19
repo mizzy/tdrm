@@ -38,7 +38,7 @@ func (app *App) NewCLI() *cli.App {
 func (app *App) NewPlanCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "plan",
-		Usage: "List task definitions to delete.",
+		Usage: "List task definitions to inactivate/delete.",
 		Flags: []cli.Flag{&cli.StringFlag{}},
 		Action: func(c *cli.Context) error {
 			format, err := newOutputFormatFrom(c.String("format"))
@@ -60,7 +60,13 @@ func (app *App) NewDeleteCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "delete",
 		Usage: "Delete task definitions.",
-		Flags: []cli.Flag{&cli.StringFlag{}},
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "force",
+				Usage:   "force delete task definitions without confirmation",
+				EnvVars: []string{"TDRM_FORCE"},
+			},
+		},
 		Action: func(c *cli.Context) error {
 			format, err := newOutputFormatFrom(c.String("format"))
 			if err != nil {
@@ -71,6 +77,7 @@ func (app *App) NewDeleteCommand() *cli.Command {
 				c.String("config"),
 				Option{
 					Delete: true,
+					Force:  c.Bool("force"),
 					Format: format,
 				},
 			)
