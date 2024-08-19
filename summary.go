@@ -49,6 +49,7 @@ func (s *SummaryTable) print(w io.Writer, format outputFormat) error {
 }
 
 func (s *SummaryTable) printTable(w io.Writer) error {
+	_, _ = fmt.Fprintln(w, "")
 	t := tablewriter.NewWriter(w)
 	t.SetHeader(s.header())
 	t.SetBorder(false)
@@ -57,6 +58,7 @@ func (s *SummaryTable) printTable(w io.Writer) error {
 		t.Append(row)
 	}
 	t.Render()
+	_, _ = fmt.Fprintln(w, "")
 	return nil
 }
 
