@@ -1,6 +1,7 @@
 package tdrm
 
 import (
+	"errors"
 	"io"
 	"os"
 
@@ -12,8 +13,8 @@ type Config struct {
 }
 
 type TaskdefConfig struct {
-	FamilyPrefix string `yaml:"family_prefix,omitempty"`
-	KeepCount    int    `yaml:"keep_count,omitempty"`
+	FamilyPrefix *string `yaml:"family_prefix,omitempty"`
+	KeepCount    *int    `yaml:"keep_count,omitempty"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -28,6 +29,16 @@ func LoadConfig(path string) (*Config, error) {
 	c := &Config{}
 	if err := yaml.Unmarshal(b, c); err != nil {
 		return nil, err
+	}
+
+	for _, taskDef := range c.TaskDefinitions {
+		if taskDef.FamilyPrefix == nil {
+			return nil, errors.New("family_prefix is required")
+		}
+
+		if taskDef.KeepCount == nil {
+			return nil, errors.New("keep_count is required")
+		}
 	}
 
 	return c, nil

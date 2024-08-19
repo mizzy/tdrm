@@ -72,12 +72,12 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 	var taskDefinitions []*TaskDefinition
 
 	for _, taskDefConfig := range c.TaskDefinitions {
-		familyPrefix := fmt.Sprintf("^%s$", strings.Replace(taskDefConfig.FamilyPrefix, "*", ".*", -1))
+		familyPrefix := fmt.Sprintf("^%s$", strings.Replace(*taskDefConfig.FamilyPrefix, "*", ".*", -1))
 		re := regexp.MustCompile(familyPrefix)
 
 		for _, family := range families {
 			if re.Match([]byte(family)) {
-				summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, taskDefConfig.KeepCount)
+				summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, *taskDefConfig.KeepCount)
 				if err != nil {
 					return err
 				}
