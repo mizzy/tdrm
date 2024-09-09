@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/Songmu/prompter v0.5.1
-	github.com/aws/aws-sdk-go-v2 v1.30.3
+	github.com/aws/aws-sdk-go-v2 v1.30.5
 	github.com/aws/aws-sdk-go-v2/config v1.27.27
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.44.3
 	github.com/goccy/go-yaml v1.12.0
@@ -23,7 +23,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.22.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.3 // indirect
-	github.com/aws/smithy-go v1.20.3 // indirect
+	github.com/aws/smithy-go v1.20.4 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
