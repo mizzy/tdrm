@@ -2,6 +2,7 @@ package tdrm
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 
@@ -9,7 +10,8 @@ import (
 )
 
 type Config struct {
-	TaskDefinitions []*TaskdefConfig `yaml:"task_definitions"`
+	TaskDefinitions    []*TaskdefConfig `yaml:"task_definitions"`
+	ProtectedRevisions []string         `yaml:"protected_revisions"`
 }
 
 type TaskdefConfig struct {
@@ -29,6 +31,12 @@ func LoadConfig(path string) (*Config, error) {
 	c := &Config{}
 	if err := yaml.Unmarshal(b, c); err != nil {
 		return nil, err
+	}
+
+	for _, ref := range c.ProtectedRevisions {
+		if _, ok := revisionKey(ref); !ok {
+			return nil, fmt.Errorf("invalid protected_revisions entry %q: expected a task definition ARN with a revision or family:revision", ref)
+		}
 	}
 
 	for _, taskDef := range c.TaskDefinitions {

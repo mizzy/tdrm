@@ -44,7 +44,7 @@ func (s *SummaryTable) print(w io.Writer, format outputFormat) error {
 	case formatJSON:
 		return s.printJSON(w)
 	default:
-		return fmt.Errorf("unknown output format: %s", format)
+		return fmt.Errorf("unknown output format: %d", format)
 	}
 }
 
