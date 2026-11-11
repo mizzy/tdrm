@@ -6,7 +6,7 @@ require (
 	github.com/Songmu/prompter v0.5.1
 	github.com/aws/aws-sdk-go-v2 v1.47.8
 	github.com/aws/aws-sdk-go-v2/config v1.33.16
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.44.3
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.104.2
 	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.33.3
 	github.com/aws/aws-sdk-go-v2/service/scheduler v1.10.3
 	github.com/aws/aws-sdk-go-v2/service/sfn v1.29.3
@@ -30,7 +30,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.9 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/fatih/color v1.17.0 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
