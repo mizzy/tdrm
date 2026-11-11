@@ -15,11 +15,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/aws/aws-sdk-go-v2/service/ecs/types"
+	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
+	"github.com/aws/aws-sdk-go-v2/service/scheduler"
+	"github.com/aws/aws-sdk-go-v2/service/sfn"
 )
 
 type App struct {
-	ecs    *ecs.Client
-	region string
+	ecs         *ecs.Client
+	sfn         *sfn.Client
+	scheduler   *scheduler.Client
+	eventbridge *eventbridge.Client
+	region      string
 }
 
 type Option struct {
@@ -43,13 +49,21 @@ func New(ctx context.Context, region string) (*App, error) {
 	}
 
 	return &App{
-		region: cfg.Region,
-		ecs:    ecs.NewFromConfig(cfg),
+		region:      cfg.Region,
+		ecs:         ecs.NewFromConfig(cfg),
+		sfn:         sfn.NewFromConfig(cfg),
+		scheduler:   scheduler.NewFromConfig(cfg),
+		eventbridge: eventbridge.NewFromConfig(cfg),
 	}, nil
 }
 
 func (app *App) Run(ctx context.Context, path string, opt Option) error {
 	c, err := LoadConfig(path)
+	if err != nil {
+		return err
+	}
+
+	inUse, err := app.buildInUse(ctx, c.ProtectedRevisions)
 	if err != nil {
 		return err
 	}
@@ -85,7 +99,7 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 				}
 
 				if !scanned {
-					summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, *taskDefConfig.KeepCount)
+					summary, taskDefinition, err := app.scanTaskDefinition(ctx, family, *taskDefConfig.KeepCount, inUse)
 					if err != nil {
 						return err
 					}
@@ -152,7 +166,28 @@ func (app *App) Run(ctx context.Context, path string, opt Option) error {
 	return nil
 }
 
-func (app *App) scanTaskDefinition(ctx context.Context, family string, keepCount int) (*Summary, *TaskDefinition, error) {
+func (app *App) buildInUse(ctx context.Context, protected []string) (inUseRevisions, error) {
+	inUse := make(inUseRevisions)
+	for _, ref := range protected {
+		inUse.add(ref)
+	}
+	log.Printf("[info] protecting %d configured revisions\n", len(inUse))
+	if err := app.collectStepFunctionsRevisions(ctx, inUse); err != nil {
+		return nil, fmt.Errorf("collect Step Functions revisions: %w", err)
+	}
+	if err := app.collectSchedulerRevisions(ctx, inUse); err != nil {
+		return nil, fmt.Errorf("collect EventBridge Scheduler revisions: %w", err)
+	}
+	if err := app.collectEventBridgeRevisions(ctx, inUse); err != nil {
+		return nil, fmt.Errorf("collect EventBridge rules revisions: %w", err)
+	}
+	if err := app.collectServiceRevisions(ctx, inUse); err != nil {
+		return nil, fmt.Errorf("collect ECS service revisions: %w", err)
+	}
+	return inUse, nil
+}
+
+func (app *App) scanTaskDefinition(ctx context.Context, family string, keepCount int, inUse inUseRevisions) (*Summary, *TaskDefinition, error) {
 	summary := &Summary{TaskDefinition: family}
 
 	log.Printf("[info] getting revisions of task definition %s\n", family)
@@ -168,12 +203,9 @@ func (app *App) scanTaskDefinition(ctx context.Context, family string, keepCount
 	}
 
 	taskDef := &TaskDefinition{
-		Family:   family,
-		ToDelete: inactiveRevisions,
-	}
-
-	if len(activeRevisions) > keepCount {
-		taskDef.ToInactive = activeRevisions[keepCount:]
+		Family:     family,
+		ToDelete:   selectToDelete(inactiveRevisions, inUse),
+		ToInactive: selectToInactive(activeRevisions, keepCount, inUse),
 	}
 
 	summary.ActiveRevisions = len(activeRevisions)
