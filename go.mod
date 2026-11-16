@@ -4,13 +4,13 @@ go 1.24
 
 require (
 	github.com/Songmu/prompter v0.5.1
-	github.com/aws/aws-sdk-go-v2 v1.47.8
+	github.com/aws/aws-sdk-go-v2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.16
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.104.2
 	github.com/aws/aws-sdk-go-v2/service/eventbridge v1.33.3
 	github.com/aws/aws-sdk-go-v2/service/scheduler v1.10.3
 	github.com/aws/aws-sdk-go-v2/service/sfn v1.29.3
-	github.com/aws/smithy-go v1.28.8
+	github.com/aws/smithy-go v1.28.9
 	github.com/goccy/go-yaml v1.19.2
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/urfave/cli/v2 v2.27.7
